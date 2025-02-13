@@ -2,8 +2,7 @@ from typing import Final
 import os
 from dotenv import load_dotenv
 from discord import Intents, Client, Message, app_commands, Interaction
-from searchlogic import search_runAI2
-from responses import melu
+from response_langgraph import basic_response
 import discord
 
 load_dotenv()
@@ -17,30 +16,30 @@ tree = app_commands.CommandTree(client)  # CommandTree untuk application command
 
 
 #### REPLY MESSAGE
-async def send_message(message: Message, user_message: str, user_id: str, private_msg, attachment) -> None:
-    if str(client.user.id) in str(message.mentions):
-        if "<@1281133399704338504>" in user_message:
-            user_message = user_message.replace("<@1281133399704338504>", "")
+async def send_message(message: Message, user_message: str, user_id: str, username, private_msg, attachment) -> None:
+    if client.user in message.mentions:
+        user_message = user_message.replace(f"<@{client.user.id}>", "")
     elif private_msg:
         user_message = user_message
     else:
         user_message = ""
 
-    if not user_message:
-        print("Message was empty")
-        return
     try:
-        async with (message.author.typing() if private_msg else message.channel.typing()):
-            if "/reset" in user_message:
-                response = melu.delete_memory(user_id)
-            else:
-                response: str = melu.response(user_message, user_id, attachment=attachment)
-            
-            if len(response) >= 2000:
-                for i in range(0, len(response), 2000):
-                    await message.author.send(response[i:i+2000]) if private_msg else await message.channel.send(response[i:i+2000])
-            else:
-                await message.author.send(response) if private_msg else await message.channel.send(response)
+        if user_message:
+            async with (message.author.typing() if private_msg else message.channel.typing()):
+                print(username)
+                print("usermessege=",user_message)
+                response: str = await basic_response(user_input=user_message,
+                                            config= {"configurable": {"thread_id": user_id,
+                                                                        "discord_username" : username}})
+
+                if len(response) >= 2000:
+                    for i in range(0, len(response), 2000):
+                        await message.author.send(response[i:i+2000]) if private_msg else await message.channel.send(response[i:i+2000])
+                else:
+                    await message.author.send(response) if private_msg else await message.channel.send(response)
+        else:
+            print("message kosong")
     except Exception as e:
         print(e)
 
@@ -67,24 +66,30 @@ async def on_message(message: Message) -> None:
     user_id = str(message.author.id)
     attachments = message.attachments
 
-    private_msg = "Direct Message" in channel
+    if isinstance(message.channel, discord.channel.DMChannel):
+        private_msg = True
+    else:
+        private_msg = False
 
-    print(f"""[{channel}] {username}: '{user_message}' 
-            Attachment = '{attachments.url}'
+    print(f"""
+    from [{channel}] 
+    {username}: '{user_message}' 
+    user_id : '{user_id}'
+    Attachment = '{attachments}'
             """)
-    await send_message(message, user_message, user_id, private_msg, attachments)
+    await send_message(message, user_message, user_id, username, private_msg, attachments)
 
 
-#### Slash Command: /delete_memory
-@tree.command(name="delete_memory", description="Delete user-specific memory.")
-async def delete_memory(interaction: Interaction):
-    user_id = str(interaction.user.id)
-    try:
-        melu.delete_memory(user_id)  # Memanggil fungsi delete_memory
-        await interaction.response.send_message("Your memory has been successfully deleted!", ephemeral=True)
-    except Exception as e:
-        print(e)
-        await interaction.response.send_message("Failed to delete memory. Please try again later.", ephemeral=True)
+# #### Slash Command: /delete_memory
+# @tree.command(name="delete_memory", description="Delete user-specific memory.")
+# async def delete_memory(interaction: Interaction):
+#     user_id = str(interaction.user.id)
+#     try:
+#         delete_memory(user_id)  # Memanggil fungsi delete_memory
+#         await interaction.response.send_message("Your memory has been successfully deleted!", ephemeral=True)
+#     except Exception as e:
+#         print(e)
+#         await interaction.response.send_message("Failed to delete memory. Please try again later.", ephemeral=True)
 
 
 def main() -> None:
