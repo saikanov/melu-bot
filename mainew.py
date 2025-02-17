@@ -5,7 +5,7 @@ from discord import Intents, Client, Message, app_commands, Interaction
 from response_langgraph import basic_response
 import discord
 
-load_dotenv()
+load_dotenv(override=True)
 TOKEN: Final[str] = os.getenv("DISCORD_TOKEN")
 
 # BOT SETUP
@@ -31,7 +31,8 @@ async def send_message(message: Message, user_message: str, user_id: str, userna
                 print("usermessege=",user_message)
                 response: str = await basic_response(user_input=user_message,
                                             config= {"configurable": {"thread_id": user_id,
-                                                                        "discord_username" : username}})
+                                                                        "discord_username" : username}},
+                                                    attachment=attachment)
 
                 if len(response) >= 2000:
                     for i in range(0, len(response), 2000):

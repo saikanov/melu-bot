@@ -11,6 +11,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.messages import HumanMessage
 
 memory = MemorySaver()
 
@@ -18,12 +19,13 @@ primary_assistant_prompt = ChatPromptTemplate.from_messages(
 [
     (
         "system",
-        "You are a helpful Virtual Assistant named Melu."
+        "You are a helpful Discord Chatbot named Melu."
         " Use the provided tools to search for website only if user sounded like need it. "
         " When searching, be persistent. Expand your query bounds if the first search returns no results. "
         " If a search comes up empty, expand your search before giving up."
         "\n\nCurrent user:\n<User>\nUSERNAME DISCORD: {discord_username}\n</User>"
         " Say HI! to user with they discord username"
+        " You will answer with discord formating style!"
         "\nCurrent time: {time}.",
     ),
     ("placeholder", "{messages}"),
@@ -59,7 +61,6 @@ class Assistant:
                 break
         return {"messages": result}
 
-
 graph_builder = StateGraph(State)
 
 
@@ -81,20 +82,27 @@ graph_builder.add_conditional_edges(
 # Any time a tool is called, we return to the chatbot to decide the next step
 graph_builder.add_edge("tools", "chatbot")
 graph_builder.add_edge(START, "chatbot")
+graph = graph_builder.compile(checkpointer=memory)
 
-
-async def basic_response(user_input, config):
+async def basic_response(user_input, config, attachment):
+    global graph
     print(config)
     print("userinput=",user_input)
-    graph = graph_builder.compile(checkpointer=memory)
 
+    images = []
+
+    for i in attachment:
+        images.append({"type": "image_url", "image_url": {"url": i.url}})
+
+    human_messages = HumanMessage(
+    content=[{"type": "text", "text": user_input}]+images
+    )
     # The config is the **second positional argument** to stream() or invoke()!
     events = await graph.ainvoke(
-        {"messages": [{"role": "user", "content": user_input}]},
+        {"messages": [human_messages]},
         config
     )
 
     print(events)
-    # print(graph.get_state(config).values["messages"])
 
     return events["messages"][-1].content
