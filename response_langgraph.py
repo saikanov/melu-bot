@@ -12,7 +12,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.messages import HumanMessage
+from dotenv import load_dotenv
 
+load_dotenv(override=True)
 memory = MemorySaver()
 
 primary_assistant_prompt = ChatPromptTemplate.from_messages(
