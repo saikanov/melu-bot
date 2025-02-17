@@ -105,6 +105,4 @@ async def basic_response(user_input, config, attachment):
         config
     )
 
-    print(events)
-
     return events["messages"][-1].content
